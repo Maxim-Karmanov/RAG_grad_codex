@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:chelyabinsk.hh.ru)",
+      "WebFetch(domain:protect.gost.ru)",
+      "Bash(python:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run:*)"
+    ]
+  }
+}

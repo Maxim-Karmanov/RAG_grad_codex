@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Градостроительный кодекс РФ — Правовой ассистент</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #252840;
+      --accent: #6c63ff;
+      --accent-hover: #5a52e0;
+      --text: #e8e8f0;
+      --text-muted: #8888aa;
+      --user-bubble: #2d2f5e;
+      --bot-bubble: #1e2035;
+      --source-bg: #13152a;
+      --border: #2a2d45;
+      --radius: 12px;
+      --score-high: #22c55e;
+      --score-mid: #f59e0b;
+      --score-low: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .header-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
+    header .subtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    .header-badge {
+      margin-left: auto;
+      font-size: 0.72rem;
+      background: linear-gradient(135deg, #6c63ff 0%, #8b5cf6 100%);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .new-chat-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+      font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .new-chat-btn:hover { background: var(--surface); border-color: var(--accent); color: var(--text); }
+
+    /* ---- MAIN LAYOUT ---- */
+    .main { flex: 1; display: flex; overflow: hidden; }
+
+    /* ---- CHAT PANEL ---- */
+    .chat-panel {
+      flex: 1; display: flex; flex-direction: column;
+      border-right: 1px solid var(--border); min-width: 0;
+    }
+    .messages {
+      flex: 1; overflow-y: auto;
+      padding: 24px 20px;
+      display: flex; flex-direction: column; gap: 18px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 6px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .message { display: flex; flex-direction: column; max-width: 82%; }
+    .message.user { align-self: flex-end; }
+    .message.bot  { align-self: flex-start; }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      line-height: 1.65;
+      font-size: 0.92rem;
+      word-break: break-word;
+    }
+    .message.user .bubble {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+      white-space: pre-wrap;
+    }
+    .message.bot .bubble {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Markdown styles inside bot bubble */
+    .bubble p { margin-bottom: 0.7em; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul, .bubble ol { padding-left: 1.4em; margin-bottom: 0.7em; }
+    .bubble li { margin-bottom: 0.3em; }
+    .bubble strong { font-weight: 700; color: var(--text); }
+    .bubble em { font-style: italic; color: var(--text-muted); }
+    .bubble h1, .bubble h2, .bubble h3 {
+      font-size: 1em; font-weight: 700;
+      margin: 0.8em 0 0.4em; color: var(--text);
+    }
+    .bubble hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+
+    /* Markdown tables in bot bubble */
+    .bubble table {
+      width: 100%; border-collapse: collapse;
+      margin: 0.8em 0; font-size: 0.87rem;
+      display: block; overflow-x: auto;
+    }
+    .bubble th {
+      background: var(--surface2); color: var(--accent);
+      font-weight: 700; padding: 7px 10px;
+      border: 1px solid var(--border); text-align: left;
+      white-space: nowrap;
+    }
+    .bubble td {
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      vertical-align: top; line-height: 1.5;
+    }
+    .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+
+    .message-meta {
+      font-size: 0.73rem; color: var(--text-muted);
+      margin-top: 5px; padding: 0 4px;
+    }
+    .message.user .message-meta { text-align: right; }
+
+    /* Citation chips */
+    .citation {
+      display: inline-block; background: var(--accent); color: white;
+      font-size: 0.76rem; padding: 1px 7px; border-radius: 5px;
+      cursor: pointer; font-weight: 600;
+      transition: background 0.15s, transform 0.1s;
+      vertical-align: middle; margin: 0 1px;
+    }
+    .citation:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+    /* Loading dots */
+    .loading-bubble {
+      display: flex; gap: 6px; align-items: center;
+      padding: 14px 18px; min-width: 64px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1.3s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: 0.18s; }
+    .dot:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.7; }
+      40% { transform: translateY(-9px); opacity: 1; }
+    }
+
+    /* Suggestion chips */
+    .suggestions {
+      padding: 0 20px 14px;
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .chip {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 6px 14px;
+      font-size: 0.81rem; cursor: pointer;
+      color: var(--text-muted); transition: all 0.15s; white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+
+    /* ---- INPUT AREA ---- */
+    .input-area {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+    }
+    textarea {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; padding: 10px 14px;
+      font-size: 0.92rem; resize: none; font-family: inherit;
+      min-height: 44px; max-height: 130px; outline: none;
+      line-height: 1.5; transition: border-color 0.15s;
+    }
+    textarea::placeholder { color: var(--text-muted); }
+    textarea:focus { border-color: var(--accent); }
+    .send-btn {
+      background: var(--accent); color: white; border: none;
+      border-radius: 10px; padding: 10px 22px; cursor: pointer;
+      font-size: 0.92rem; font-weight: 600; white-space: nowrap;
+      height: 44px; transition: background 0.15s, transform 0.1s; flex-shrink: 0;
+    }
+    .send-btn:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+    .send-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* ---- NOTCH RAIL ---- */
+    .notch-rail {
+      width: 32px; flex-shrink: 0;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 14px 0; gap: 6px;
+      overflow-y: auto; overflow-x: hidden;
+    }
+    .notch-rail::-webkit-scrollbar { display: none; }
+
+    .notch {
+      width: 24px; height: 32px;
+      border-radius: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.68rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .notch:hover {
+      background: var(--surface); border-color: var(--accent);
+      color: var(--accent); transform: scaleX(1.15);
+    }
+    .notch.active {
+      background: var(--accent); border-color: var(--accent);
+      color: white;
+    }
+
+    .notch-tooltip {
+      position: fixed; z-index: 500;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.75rem; font-family: inherit;
+      padding: 7px 11px; border-radius: 8px;
+      max-width: 240px; pointer-events: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      display: none; line-height: 1.45;
+      word-break: break-word;
+    }
+
+    /* ---- SOURCES PANEL ---- */
+    .sources-panel {
+      width: 340px; min-width: 260px; max-width: 380px;
+      display: flex; flex-direction: row;
+      background: var(--source-bg); flex-shrink: 0;
+    }
+    .sources-main {
+      flex: 1; display: flex; flex-direction: column; min-width: 0;
+    }
+    .sources-header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .sources-header-title {
+      font-weight: 600; font-size: 0.88rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sources-count {
+      background: var(--surface2); font-size: 0.72rem;
+      padding: 2px 7px; border-radius: 10px; color: var(--text-muted);
+    }
+    .consistency-badge {
+      font-size: 0.73rem; padding: 3px 9px; border-radius: 12px; font-weight: 600;
+    }
+    .sources-list {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .sources-list::-webkit-scrollbar { width: 5px; }
+    .sources-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .source-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .source-card:hover { border-color: var(--accent); transform: translateX(2px); }
+    .source-card.highlighted {
+      border-color: var(--accent); background: var(--surface2);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .source-art-num {
+      font-size: 0.75rem; color: var(--accent); font-weight: 700;
+      margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .source-art-title {
+      font-size: 0.83rem; font-weight: 600; margin-bottom: 6px;
+      color: var(--text); line-height: 1.3;
+    }
+    .source-art-excerpt {
+      font-size: 0.77rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 8px;
+    }
+    .source-card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .source-highlight-btn {
+      font-size: 0.72rem; color: var(--text-muted); cursor: pointer;
+      padding: 0; background: none; border: none; font-family: inherit;
+    }
+    .source-highlight-btn:hover { color: var(--accent); }
+    .source-read-btn {
+      font-size: 0.72rem; color: var(--accent); cursor: pointer;
+      padding: 3px 8px; background: rgba(108,99,255,0.1);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 6px; font-family: inherit; font-weight: 600;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .source-read-btn:hover { background: rgba(108,99,255,0.2); border-color: var(--accent); }
+
+    .sources-empty {
+      padding: 32px 20px; text-align: center;
+      color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;
+    }
+    .sources-empty-icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
+
+    /* ---- PIPELINE STATUS ---- */
+    .pipeline-status {
+      padding: 6px 18px 10px;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .pipeline-step {
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 10px;
+      border: 1px solid var(--border); color: var(--text-muted); display: none;
+    }
+    .pipeline-step.active {
+      display: inline-block; border-color: var(--accent); color: var(--accent);
+      background: rgba(108, 99, 255, 0.1); animation: pulse-border 1.5s infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.5; }
+    }
+
+    /* ---- ARTICLE MODAL ---- */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%; max-width: 860px;
+      max-height: 90vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      animation: modal-in 0.2s ease;
+    }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+
+    .modal-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 12px;
+      flex-shrink: 0;
+    }
+    .modal-header-info { flex: 1; min-width: 0; }
+    .modal-article-num {
+      font-size: 0.75rem; color: var(--accent); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;
+    }
+    .modal-article-title {
+      font-size: 1rem; font-weight: 700; line-height: 1.3;
+      color: var(--text);
+    }
+    .modal-close {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); width: 32px; height: 32px;
+      border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+
+    .modal-body {
+      flex: 1; overflow-y: auto; padding: 22px 28px;
+      font-size: 0.92rem; line-height: 1.75;
+    }
+    .modal-body::-webkit-scrollbar { width: 6px; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Markdown styles inside modal */
+    .modal-body p { margin-bottom: 0.9em; }
+    .modal-body p:last-child { margin-bottom: 0; }
+    .modal-body h1, .modal-body h2, .modal-body h3, .modal-body h4 {
+      color: var(--text); font-weight: 700; margin: 1.2em 0 0.5em;
+    }
+    .modal-body h1 { font-size: 1.15em; }
+    .modal-body h2 { font-size: 1.05em; }
+    .modal-body h3 { font-size: 1em; }
+    .modal-body ul, .modal-body ol { padding-left: 1.6em; margin-bottom: 0.9em; }
+    .modal-body li { margin-bottom: 0.4em; }
+    .modal-body strong { font-weight: 700; }
+    .modal-body em { font-style: italic; color: var(--text-muted); }
+    .modal-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
+    .modal-body blockquote {
+      border-left: 3px solid var(--accent); padding: 8px 16px;
+      margin: 0.8em 0; color: var(--text-muted); background: var(--surface2);
+      border-radius: 0 6px 6px 0;
+    }
+    .modal-body code {
+      background: var(--surface2); padding: 1px 5px;
+      border-radius: 4px; font-size: 0.88em; font-family: monospace;
+    }
+
+    /* Tables inside modal */
+    .modal-body table {
+      width: 100%; border-collapse: collapse;
+      margin: 1em 0; font-size: 0.88rem;
+      display: block; overflow-x: auto;
+    }
+    .modal-body th {
+      background: var(--surface2); color: var(--accent);
+      font-weight: 700; padding: 9px 12px;
+      border: 1px solid var(--border); text-align: left;
+      white-space: nowrap;
+    }
+    .modal-body td {
+      padding: 7px 12px; border: 1px solid var(--border);
+      vertical-align: top; line-height: 1.5;
+    }
+    .modal-body tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+    .modal-body tr:hover td { background: rgba(108,99,255,0.06); }
+
+    .modal-loading {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 48px; color: var(--text-muted); font-size: 0.9rem;
+    }
+    .modal-loading-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+      animation: bounce 1.3s infinite ease-in-out;
+    }
+    .modal-loading-dot:nth-child(2) { animation-delay: 0.18s; }
+    .modal-loading-dot:nth-child(3) { animation-delay: 0.36s; }
+
+    /* Highlight for matched excerpt in modal */
+    .excerpt-highlight {
+      background: rgba(108, 99, 255, 0.35);
+      border-radius: 3px;
+      padding: 1px 0;
+      animation: highlight-pulse 2.5s ease 0.2s both;
+    }
+    @keyframes highlight-pulse {
+      0%   { background: rgba(108, 99, 255, 0.1); }
+      30%  { background: rgba(108, 99, 255, 0.55); }
+      100% { background: rgba(108, 99, 255, 0.25); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">⚖️</div>
+  <div>
+    <h1>Градостроительный кодекс РФ</h1>
+    <div class="subtitle">Правовой ассистент на основе искусственного интеллекта</div>
+  </div>
+  <button class="new-chat-btn" onclick="newChat()" title="Начать новый диалог">
+    ✦ Новый чат
+  </button>
+  <div class="header-badge">RAG · GPT-4o-mini</div>
+</header>
+
+<div class="main">
+
+  <!-- ===== CHAT PANEL ===== -->
+  <div class="chat-panel">
+    <div class="messages" id="messages">
+      <div class="message bot">
+        <div class="bubble">
+          <p>Здравствуйте! Я правовой ассистент по <strong>Градостроительному кодексу Российской Федерации</strong>.</p>
+          <p>Задайте вопрос о строительстве, землепользовании, территориальном планировании, разрешениях на строительство или любых других нормах кодекса.</p>
+          <p>Каждый ответ содержит ссылки на конкретные статьи и проверку достоверности. Нажмите на статью в правой панели, чтобы прочитать её целиком.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-status" id="pipelineStatus">
+      <span class="pipeline-step" id="step-hyde">🔍 Трансформация запроса</span>
+      <span class="pipeline-step" id="step-retrieve">📚 Гибридный поиск</span>
+      <span class="pipeline-step" id="step-rerank">🏆 Ранжирование</span>
+      <span class="pipeline-step" id="step-generate">✍️ Генерация</span>
+      <span class="pipeline-step" id="step-check">✅ Проверка достоверности</span>
+    </div>
+
+    <div class="suggestions" id="suggestions">
+      <div class="chip" onclick="useSuggestion(this)">Что такое объект капитального строительства?</div>
+      <div class="chip" onclick="useSuggestion(this)">Кто такой застройщик?</div>
+      <div class="chip" onclick="useSuggestion(this)">Принципы градостроительной деятельности</div>
+      <div class="chip" onclick="useSuggestion(this)">Что такое красные линии?</div>
+      <div class="chip" onclick="useSuggestion(this)">Территориальное планирование</div>
+    </div>
+
+    <div class="input-area">
+      <textarea
+        id="questionInput"
+        placeholder="Введите вопрос по Градостроительному кодексу РФ..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">Отправить</button>
+    </div>
+  </div>
+
+  <!-- ===== SOURCES PANEL ===== -->
+  <div class="sources-panel">
+    <!-- Notch rail: one notch per user question -->
+    <div class="notch-rail" id="notchRail"></div>
+
+    <div class="sources-main">
+      <div class="sources-header">
+        <div class="sources-header-title">
+          Источники
+          <span class="sources-count" id="sourcesCount">0</span>
+        </div>
+        <span class="consistency-badge" id="consistencyBadge" style="display:none"></span>
+      </div>
+      <div class="sources-list" id="sourcesList">
+        <div class="sources-empty">
+          <div class="sources-empty-icon">📖</div>
+          Источники из Градостроительного кодекса появятся здесь после ответа на вопрос
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== NOTCH TOOLTIP ===== -->
+<div id="notchTooltip" class="notch-tooltip"></div>
+
+<!-- ===== ARTICLE MODAL ===== -->
+<div class="modal-overlay" id="articleModal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-article-num" id="modalArticleNum"></div>
+        <div class="modal-article-title" id="modalArticleTitle">Загрузка…</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()" title="Закрыть">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div class="modal-loading">
+        <div class="modal-loading-dot"></div>
+        <div class="modal-loading-dot"></div>
+        <div class="modal-loading-dot"></div>
+        Загрузка текста статьи…
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Configure marked.js
+  marked.setOptions({ breaks: true, gfm: true });
+
+  let threadId = null;
+  let lastSources = [];   // cached for citation-chip → modal navigation
+  let turnHistory  = [];  // [{question, sources, score}] — one entry per bot turn
+  let activeTurnIdx = -1;
+
+  // ---- Notch rail: tooltip ----
+  function showNotchTooltip(notchEl, text) {
+    const tip = document.getElementById('notchTooltip');
+    tip.textContent = text.length > 80 ? text.slice(0, 77) + '…' : text;
+    tip.style.display = 'block';
+    const r = notchEl.getBoundingClientRect();
+    // Position to the right of the rail, centred on the notch
+    tip.style.left  = (r.right + 10) + 'px';
+    tip.style.top   = (r.top + r.height / 2) + 'px';
+    tip.style.transform = 'translateY(-50%)';
+  }
+  function hideNotchTooltip() {
+    document.getElementById('notchTooltip').style.display = 'none';
+  }
+
+  // ---- Add a new turn (question + sources) and select it ----
+  function addTurn(question, sources, score) {
+    const idx = turnHistory.length;
+    turnHistory.push({ question, sources, score });
+
+    const rail  = document.getElementById('notchRail');
+    const notch = document.createElement('div');
+    notch.className   = 'notch';
+    notch.textContent = idx + 1;
+    notch.addEventListener('click',      ()  => switchToTurn(idx));
+    notch.addEventListener('mouseenter', ()  => showNotchTooltip(notch, question));
+    notch.addEventListener('mouseleave', hideNotchTooltip);
+    rail.appendChild(notch);
+
+    switchToTurn(idx);  // auto-select the latest turn
+  }
+
+  // ---- Switch sources panel to a specific turn ----
+  function switchToTurn(idx) {
+    activeTurnIdx = idx;
+    const { sources, score } = turnHistory[idx];
+    lastSources = sources || [];
+    renderSources(sources, score);
+
+    document.querySelectorAll('.notch').forEach((n, i) => {
+      n.classList.toggle('active', i === idx);
+    });
+  }
+
+  // ---- Textarea auto-resize ----
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function useSuggestion(el) {
+    document.getElementById('questionInput').value = el.textContent.trim();
+    document.getElementById('suggestions').style.display = 'none';
+    sendMessage();
+  }
+
+  // ---- Render answer: markdown + [Статья N] → citation chips ----
+  function renderAnswer(text) {
+    // 1. Replace [Статья N] with unique placeholders before markdown parsing
+    const placeholders = {};
+    let idx = 0;
+    const withPlaceholders = text.replace(/\[Статья\s+(\d+[\.\d]*)\]/g, (match, num) => {
+      const key = `CITATION_${idx++}_END`;
+      placeholders[key] = `<span class="citation" onclick="openArticleFromCitation('${num}')">[Статья ${num}]</span>`;
+      return key;
+    });
+
+    // 2. Parse markdown (handles tables, bold, lists, etc.)
+    let html = marked.parse(withPlaceholders);
+
+    // 3. Restore citation chips
+    for (const [key, chip] of Object.entries(placeholders)) {
+      html = html.replaceAll(key, chip);
+    }
+    return html;
+  }
+
+  // ---- Highlight source card matching article number ----
+  function highlightSource(articleNum) {
+    document.querySelectorAll('.source-card').forEach(card => {
+      card.classList.toggle('highlighted', card.dataset.article === articleNum);
+    });
+    const highlighted = document.querySelector('.source-card.highlighted');
+    if (highlighted) highlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ---- Render sources panel ----
+  function renderSources(sources, score) {
+    const list = document.getElementById('sourcesList');
+    const badge = document.getElementById('consistencyBadge');
+    const countEl = document.getElementById('sourcesCount');
+
+    countEl.textContent = sources ? sources.length : 0;
+
+    if (!sources || sources.length === 0) {
+      list.innerHTML = '<div class="sources-empty"><div class="sources-empty-icon">📭</div>Источники не найдены</div>';
+      badge.style.display = 'none';
+      return;
+    }
+
+    // Consistency badge
+    const pct = Math.round(score * 100);
+    let color, label;
+    if (score >= 0.8)      { color = 'var(--score-high)'; label = `✓ ${pct}%`; }
+    else if (score >= 0.5) { color = 'var(--score-mid)';  label = `~ ${pct}%`; }
+    else                   { color = 'var(--score-low)';  label = `! ${pct}%`; }
+
+    badge.textContent = label;
+    badge.style.background = color + '22';
+    badge.style.color = color;
+    badge.style.border = `1px solid ${color}55`;
+    badge.style.display = 'inline-block';
+    badge.title = `Достоверность ответа: ${pct}%`;
+
+    list.innerHTML = sources.map(s => `
+      <div class="source-card" data-article="${s.article}" data-excerpt="${escapeHtml(s.excerpt)}">
+        <div class="source-art-num">Статья ${s.article}</div>
+        <div class="source-art-title">${escapeHtml(s.title)}</div>
+        <div class="source-art-excerpt">${escapeHtml(s.excerpt)}…</div>
+        <div class="source-card-footer">
+          <button class="source-highlight-btn" onclick="highlightSource('${s.article}')">
+            ↑ К упоминанию в ответе
+          </button>
+          <button class="source-read-btn" onclick="openArticleModalFromCard(this)">
+            Читать статью →
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---- Add a message bubble to chat ----
+  function addMessage(role, content, isHtml = false) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (isHtml) bubble.innerHTML = content;
+    else bubble.textContent = content;
+    const meta = document.createElement('div');
+    meta.className = 'message-meta';
+    meta.textContent = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    div.appendChild(bubble);
+    div.appendChild(meta);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+  }
+
+  // ---- Pipeline step animation ----
+  const STEPS = [
+    { id: 'step-hyde',     delay: 0    },
+    { id: 'step-retrieve', delay: 1500 },
+    { id: 'step-rerank',   delay: 3000 },
+    { id: 'step-generate', delay: 4500 },
+    { id: 'step-check',    delay: 7000 },
+  ];
+  let stepTimers = [];
+
+  function showLoadingSteps() {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = 'loading-msg';
+    div.innerHTML = `<div class="bubble loading-bubble">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+
+    clearStepTimers();
+    STEPS.forEach(step => {
+      const t = setTimeout(() => {
+        document.querySelectorAll('.pipeline-step').forEach(el => el.classList.remove('active'));
+        const el = document.getElementById(step.id);
+        if (el) el.classList.add('active');
+      }, step.delay);
+      stepTimers.push(t);
+    });
+  }
+
+  function clearStepTimers() {
+    stepTimers.forEach(t => clearTimeout(t));
+    stepTimers = [];
+    document.querySelectorAll('.pipeline-step').forEach(el => el.classList.remove('active'));
+  }
+
+  function removeLoadingIndicator() {
+    clearStepTimers();
+    const el = document.getElementById('loading-msg');
+    if (el) el.remove();
+  }
+
+  // ---- New chat ----
+  function newChat() {
+    // Reset conversation state
+    threadId     = null;
+    lastSources  = [];
+    turnHistory  = [];
+    activeTurnIdx = -1;
+    document.getElementById('notchRail').innerHTML = '';
+    hideNotchTooltip();
+
+    // Clear messages, restore welcome bubble
+    const container = document.getElementById('messages');
+    container.innerHTML = `
+      <div class="message bot">
+        <div class="bubble">
+          <p>Здравствуйте! Я правовой ассистент по <strong>Градостроительному кодексу Российской Федерации</strong>.</p>
+          <p>Задайте вопрос о строительстве, землепользовании, территориальном планировании, разрешениях на строительство или любых других нормах кодекса.</p>
+          <p>Каждый ответ содержит ссылки на конкретные статьи и проверку достоверности. Нажмите на статью в правой панели, чтобы прочитать её целиком.</p>
+        </div>
+      </div>`;
+
+    // Show suggestion chips again
+    const suggestions = document.getElementById('suggestions');
+    suggestions.style.display = 'flex';
+
+    // Reset sources panel
+    document.getElementById('sourcesList').innerHTML = `
+      <div class="sources-empty">
+        <div class="sources-empty-icon">📖</div>
+        Источники из Градостроительного кодекса появятся здесь после ответа на вопрос
+      </div>`;
+    document.getElementById('sourcesCount').textContent = '0';
+    const badge = document.getElementById('consistencyBadge');
+    badge.style.display = 'none';
+
+    // Clear input
+    const input = document.getElementById('questionInput');
+    input.value = '';
+    input.style.height = 'auto';
+    input.focus();
+
+    // Clear any active pipeline steps
+    clearStepTimers();
+  }
+
+  // ---- Main send function ----
+  async function sendMessage() {
+    const input = document.getElementById('questionInput');
+    const btn = document.getElementById('sendBtn');
+    const question = input.value.trim();
+    if (!question || btn.disabled) return;
+
+    document.getElementById('suggestions').style.display = 'none';
+    addMessage('user', question);
+    input.value = '';
+    input.style.height = 'auto';
+    btn.disabled = true;
+    showLoadingSteps();
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, thread_id: threadId }),
+      });
+      if (!response.ok) {
+        let detail = 'Ошибка сервера';
+        try { const err = await response.json(); detail = err.detail || detail; } catch {}
+        throw new Error(detail);
+      }
+      const data = await response.json();
+      threadId = data.thread_id;
+      removeLoadingIndicator();
+      addMessage('bot', renderAnswer(data.answer), true);
+      addTurn(question, data.sources, data.consistency_score);
+    } catch (err) {
+      removeLoadingIndicator();
+      addMessage('bot', `Ошибка: ${err.message}. Пожалуйста, попробуйте повторить запрос.`);
+    } finally {
+      btn.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ---- Article modal ----
+
+  // Open modal from "Читать статью →" button on a source card
+  function openArticleModalFromCard(btn) {
+    const card = btn.closest('.source-card');
+    const articleNum = card.dataset.article;
+    const title = card.querySelector('.source-art-title').textContent;
+    const excerpt = card.dataset.excerpt || '';
+    openArticleModal(articleNum, title, excerpt);
+  }
+
+  // Open modal from a [Статья N] citation chip in the answer
+  function openArticleFromCitation(articleNum) {
+    highlightSource(articleNum);
+    const src = lastSources.find(s => s.article === articleNum);
+    openArticleModal(articleNum, src ? src.title : '', src ? src.excerpt : '');
+  }
+
+  async function openArticleModal(articleNum, titleHint, excerpt = '') {
+    const overlay = document.getElementById('articleModal');
+    const numEl   = document.getElementById('modalArticleNum');
+    const titleEl = document.getElementById('modalArticleTitle');
+    const bodyEl  = document.getElementById('modalBody');
+
+    // Show modal with loading state
+    numEl.textContent   = `Статья ${articleNum}`;
+    titleEl.textContent = titleHint || 'Загрузка…';
+    bodyEl.innerHTML = `<div class="modal-loading">
+      <div class="modal-loading-dot"></div>
+      <div class="modal-loading-dot"></div>
+      <div class="modal-loading-dot"></div>
+      Загрузка текста статьи…
+    </div>`;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    try {
+      const resp = await fetch(`/api/article/${articleNum}`);
+      if (!resp.ok) throw new Error(`Статья ${articleNum} не найдена`);
+      const data = await resp.json();
+      titleEl.textContent = data.title;
+      bodyEl.innerHTML = marked.parse(data.content);
+      if (excerpt) highlightExcerptInModal(bodyEl, excerpt);
+    } catch (err) {
+      bodyEl.innerHTML = `<p style="color:var(--score-low)">Ошибка загрузки: ${err.message}</p>`;
+    }
+  }
+
+  // Find the excerpt text in the rendered modal and highlight it
+  function highlightExcerptInModal(bodyEl, excerpt) {
+    // Use first 60 chars — reliable, fits within a single paragraph
+    const searchText = excerpt.trim().slice(0, 60);
+    if (!searchText) return;
+
+    const walker = document.createTreeWalker(bodyEl, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const idx = node.textContent.indexOf(searchText);
+      if (idx === -1) continue;
+
+      // Split text node: before | match | after
+      const before = document.createTextNode(node.textContent.slice(0, idx));
+      const mark   = document.createElement('mark');
+      mark.className = 'excerpt-highlight';
+      mark.textContent = node.textContent.slice(idx, idx + searchText.length);
+      const after = document.createTextNode(node.textContent.slice(idx + searchText.length));
+
+      const parent = node.parentNode;
+      parent.replaceChild(after, node);
+      parent.insertBefore(mark, after);
+      parent.insertBefore(before, mark);
+
+      // Scroll to highlight after render
+      setTimeout(() => mark.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      break;
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('articleModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function handleOverlayClick(e) {
+    // Close when clicking backdrop (not the modal itself)
+    if (e.target === document.getElementById('articleModal')) closeModal();
+  }
+
+  // Close modal on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

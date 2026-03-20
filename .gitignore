@@ -8,3 +8,16 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Secrets
+.env
+
+# Runtime cache
+cache/
+
+# Editors
+.vscode/
+
+# Temp dirs
+~/
+data/

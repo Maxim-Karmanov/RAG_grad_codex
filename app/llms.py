@@ -29,7 +29,8 @@ underlying_embeddings = OpenAIEmbeddings(
     base_url=BASE_URL,
     api_key=OPENAI_API_KEY,
 )
-# Avoiding unnecessary costs by caching the embeddings.
+
+# Кэширование эмбеддингов
 EMBEDDINGS = CacheBackedEmbeddings.from_bytes_store(
     underlying_embeddings, store, namespace=underlying_embeddings.model
 )
